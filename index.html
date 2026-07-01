@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ぐるぐるラバーダック - カオスエディション</title>
+    <style>
+        /* 画面全体のチカチカする背景設定 */
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #00ff00, #ff0000);
+            background-size: 600% 600%;
+            animation: strobe 0.5s infinite alternate;
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* 背景がチカチカ動くアニメーション */
+        @keyframes strobe {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* ギミック1: 上下にふわふわ動くコンテナ */
+        .duck-container {
+            animation: bounce 2s infinite ease-in-out alternate;
+            z-index: 10;
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(-20px); }
+            to { transform: translateY(20px); }
+        }
+
+        /* アヒルの画像のスタイル */
+        .duck-img {
+            width: 300px;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 5px solid white;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            animation: spin 3s linear infinite;
+            cursor: pointer;
+        }
+
+        /* 回転アニメーション */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* クリックされた時の超高速モード */
+        .fast-spin { animation: spin 0.1s linear infinite; }
+        body.fast-strobe { animation: strobe 0.05s infinite alternate; }
+
+        /* 文章を入れるためのパネル（背景が派手でも読めるように） */
+        .info-panel {
+            background: rgba(0, 0, 0, 0.7);
+            border: 3px dashed #ffff00;
+            border-radius: 15px;
+            padding: 20px 40px;
+            margin-top: 30px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 0 20px #ffff00;
+            z-index: 10;
+            max-width: 80%;
+        }
+
+        /* ギミック2: 点滅する警告文 */
+        .warning-text {
+            color: #ff3333;
+            font-weight: bold;
+            font-size: 1.2rem;
+            animation: blink 0.5s infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        h1 { margin: 0 0 10px 0; color: #ffff00; text-shadow: 2px 2px 4px #000; }
+        p { margin: 5px 0; line-height: 1.6; }
+
+        /* ギミック3: アヒル増殖ボタン */
+        .magic-btn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #000;
+            background-color: #ffff00;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+
+        .magic-btn:active { transform: scale(0.95); }
+
+        /* 降ってくる小アヒルのスタイル */
+        .mini-duck {
+            position: absolute;
+            top: -50px;
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 50%;
+            pointer-events: none; /* クリックの邪魔にならないようにする */
+            z-index: 5;
+            animation: fall 3s linear forwards;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(110vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="duck-container">
+        <img src="207364.jpg" alt="Rubber Duck" class="duck-img" id="duck" title="クリックしてみて！">
+    </div>
+
+    <div class="info-panel">
+        <div class="warning-text">⚠️ 警告：画面が激しく点滅します！光過敏性にご注意ください。</div>
+        
+        <h1>THE PSYCHEDELIC DUCK</h1>
+        <p>世界中の海を（ぐるぐると）旅する黄色いラバーダックの公式サイトへようこそ！</p>
+        <p><strong>名前:</strong> ダック・ザ・サイケデリック</p>
+        <p><strong>趣味:</strong> 限界を超えた高速スピン、目がチカチカする空間にいること</p>
+        <p style="font-size: 0.9em; color: #ccc;">※上のアヒルをクリックすると覚醒します。</p>
+
+        <button class="magic-btn" id="spawnBtn">🦆 アヒルを降らせる！</button>
+    </div>
+
+    <script>
+        // --- ギミックA: アヒル超高速スピン ---
+        const duck = document.getElementById('duck');
+        const body = document.body;
+        let isFast = false;
+
+        duck.addEventListener('click', () => {
+            isFast = !isFast;
+            if (isFast) {
+                duck.classList.add('fast-spin');
+                body.classList.add('fast-strobe');
+            } else {
+                duck.classList.remove('fast-spin');
+                body.classList.remove('fast-strobe');
+            }
+        });
+
+        // --- ギミックB: アヒル増殖（雨のように降らせる） ---
+        const spawnBtn = document.getElementById('spawnBtn');
+
+        spawnBtn.addEventListener('click', () => {
+            // 1回のクリックで10匹のアヒルを生成
+            for (let i = 0; i < 10; i++) {
+                setTimeout(createMiniDuck, i * 100); // 0.1秒ずらして降らせる
+            }
+        });
+
+        function createMiniDuck() {
+            const miniDuck = document.createElement('img');
+            miniDuck.src = 'duck.png';
+            miniDuck.classList.add('mini-duck');
+            
+            // ランダムな横位置（0% 〜 90%）
+            const randomX = Math.random() * 90;
+            miniDuck.style.left = randomX + 'vw';
+            
+            // 画面に追加
+            document.body.appendChild(miniDuck);
+
+            // アニメーションが終わったら（3秒後）HTMLから削除して軽くする
+            setTimeout(() => {
+                miniDuck.remove();
+            }, 3000);
+        }
+    </script>
+
+</body>
+</html>
