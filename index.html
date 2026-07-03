@@ -60,7 +60,7 @@
         .fast-spin { animation: spin 0.1s linear infinite; }
         body.fast-strobe { animation: strobe 0.05s infinite alternate; }
 
-        /* 文章を入れるためのパネル（背景が派手でも読めるように） */
+        /* 文章を入れるためのパネル */
         .info-panel {
             background: rgba(0, 0, 0, 0.7);
             border: 3px dashed #ffff00;
@@ -116,7 +116,7 @@
             height: 60px;
             object-fit: cover;
             border-radius: 50%;
-            pointer-events: none; /* クリックの邪魔にならないようにする */
+            pointer-events: none;
             z-index: 5;
             animation: fall 3s linear forwards;
         }
@@ -126,6 +126,23 @@
                 transform: translateY(110vh) rotate(720deg);
                 opacity: 0;
             }
+        }
+
+        /* ★新ギミック：飛び出す「クワッ！」の文字スタイル */
+        .quack-text {
+            position: absolute;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000;
+            pointer-events: none;
+            z-index: 20;
+            animation: quack-pop 0.4s ease-out forwards;
+        }
+
+        @keyframes quack-pop {
+            0% { transform: scale(0) rotate(0deg); opacity: 1; }
+            50% { transform: scale(1.5) rotate(var(--rot)); opacity: 1; }
+            100% { transform: scale(1) rotate(var(--rot)) translateY(-50px); opacity: 0; }
         }
     </style>
 </head>
@@ -148,12 +165,64 @@
     </div>
 
     <script>
+        // --- ★新機能: Web Audio APIによる「クワッ」音の合成 ---
+        function playQuackSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                // カオス感を出すために鋸歯状波（sawtooth）を使用
+                osc.type = 'sawtooth'; 
+                // 「クワッ」という独特のピッチ変化（高音から低音へ急降下）
+                osc.frequency.setValueAtTime(350, audioCtx.currentTime); 
+                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.15); 
+                
+                // 音量の減衰
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch(e) {
+                console.log("Audio Context がブロックされたか、未対応のブラウザです");
+            }
+        }
+
+        // --- ★新機能: 画面に「クワッ！」の文字をポップアップさせる ---
+        function spawnQuackText(x, y) {
+            const quack = document.createElement('div');
+            quack.classList.add('quack-text');
+            quack.innerText = 'クワッ！';
+            
+            // ランダムな傾きをCSS変数にセット
+            const randomRot = (Math.random() - 0.5) * 60; // -30度 〜 30度
+            quack.style.setProperty('--rot', `${randomRot}deg`);
+            
+            // 表示位置を指定
+            quack.style.left = `${x}px`;
+            quack.style.top = `${y}px`;
+            
+            // 文字の色をランダム（黄色・ネオンピンク・シアンなど）にしてカオス化
+            const colors = ['#ffff00', '#ff00ff', '#00ffff', '#ff3333', '#33ff33'];
+            quack.style.color = colors[Math.floor(Math.random() * colors.length)];
+            
+            document.body.appendChild(quack);
+            
+            // アニメーション終了後に削除
+            setTimeout(() => { quack.remove(); }, 400);
+        }
+
+
         // --- ギミックA: アヒル超高速スピン ---
         const duck = document.getElementById('duck');
         const body = document.body;
         let isFast = false;
 
-        duck.addEventListener('click', () => {
+        duck.addEventListener('click', (e) => {
             isFast = !isFast;
             if (isFast) {
                 duck.classList.add('fast-spin');
@@ -162,6 +231,10 @@
                 duck.classList.remove('fast-spin');
                 body.classList.remove('fast-strobe');
             }
+
+            // クリックされた位置に「クワッ！」を出し、音を鳴らす
+            spawnQuackText(e.clientX, e.clientY);
+            playQuackSound();
         });
 
         // --- ギミックB: あひる増殖（雨のように降らせる） ---
@@ -185,6 +258,12 @@
             
             // 画面に追加
             document.body.appendChild(miniDuck);
+
+            // 小アヒルが降ってきたタイミングでも音と文字を発生させる
+            // 画面上部（降ってくる位置）の付近にポップアップ
+            const pixelX = (randomX / 100) * window.innerWidth;
+            spawnQuackText(pixelX, 50);
+            playQuackSound();
 
             // アニメーションが終わったら（3秒後）HTMLから削除して軽くする
             setTimeout(() => {
